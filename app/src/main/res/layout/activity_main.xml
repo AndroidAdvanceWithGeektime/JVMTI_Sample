@@ -21,7 +21,7 @@
         android:id="@+id/button_modify_class"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="修改 Object class" />
+        android:text="修改 Activity Class" />
     <Button
         android:id="@+id/button_start_activity"
         android:layout_width="wrap_content"

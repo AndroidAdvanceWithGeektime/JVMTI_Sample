@@ -123,7 +123,7 @@ ClassTransform(jvmtiEnv *jvmti_env,
             ir::String *methodName = method->decl->name;
             std::string prototype = method->decl->prototype->Signature();
 
-            ALOGI("==========ClassTransform method %s=======",  methodName->c_str());
+            ALOGI("==========ClassTransform method %s=======", methodName->c_str());
 
             if (!strcmp("onCreate", methodName->c_str()) &&
                 !strcmp(prototype.c_str(), "(Landroid/os/Bundle;)V")) {
@@ -142,7 +142,7 @@ ClassTransform(jvmtiEnv *jvmti_env,
                 }
 
                 ir::Type *stringT = b.GetType("Ljava/lang/String;");
-                ir::Type *activityT=b.GetType("Landroid/app/Activity;");
+                ir::Type *activityT = b.GetType("Landroid/app/Activity;");
                 ir::Type *jvmtiHelperT = b.GetType("Lcom/dodola/jvmtilib/JVMTIHelper;");
                 ir::Type *voidT = b.GetType("V");
                 std::stringstream ss;
@@ -173,8 +173,9 @@ ClassTransform(jvmtiEnv *jvmti_env,
                 addInstr(c, fi, OP_MOVE_OBJECT, {v0, thiz});
                 addInstr(c, fi, OP_CONST_STRING,
                          {v1, c.Alloc<String>(methodDesc, methodDesc->orig_index)});//对于插入到前面的指令来说
-                addCall(b, c, fi, OP_INVOKE_STATIC, jvmtiHelperT, "printEnter", voidT, {activityT,stringT},
-                        {0,1});
+                addCall(b, c, fi, OP_INVOKE_STATIC, jvmtiHelperT, "printEnter", voidT,
+                        {activityT, stringT},
+                        {0, 1});
                 c.Assemble();
 
                 Allocator allocator;
@@ -213,7 +214,12 @@ jvmtiEnv *CreateJvmtiEnv(JavaVM *vm) {
 void ObjectAllocCallback(jvmtiEnv *jvmti, JNIEnv *jni,
                          jthread thread, jobject object,
                          jclass klass, jlong size) {
-//    ALOGI("==========alloc callback=======");
+    jclass cls = jni->FindClass("java/lang/Class");
+    jmethodID mid_getName = jni->GetMethodID(cls, "getName", "()Ljava/lang/String;");
+    jstring name = static_cast<jstring>(jni->CallObjectMethod(klass, mid_getName));
+    const char* className=jni->GetStringUTFChars(name,JNI_FALSE);
+    ALOGI("==========alloc callback======= %s {size:%d}",className,size);
+    jni->ReleaseStringUTFChars(name,className);
 }
 
 void GCStartCallback(jvmtiEnv *jvmti) {
@@ -264,12 +270,14 @@ JvmTINativeMethodBind(jvmtiEnv *jvmti_env, JNIEnv *jni_env, jthread thread, jmet
     }
     //绑定 package code 到BootClassLoader 里
     jfieldID packageCodePathId = jni_env->GetStaticFieldID(clazz, "packageCodePath",
-                                                     "Ljava/lang/String;");
+                                                           "Ljava/lang/String;");
     jstring packageCodePath = static_cast<jstring>(jni_env->GetStaticObjectField(clazz,
                                                                                  packageCodePathId));
     const char *pathChar = jni_env->GetStringUTFChars(packageCodePath, JNI_FALSE);
-    ALOGI("===========add to boot classloader %s===============",pathChar);
+    ALOGI("===========add to boot classloader %s===============", pathChar);
     jvmti_env->AddToBootstrapClassLoaderSearch(pathChar);
+    jni_env->ReleaseStringUTFChars(packageCodePath,pathChar);
+
 }
 
 extern "C" JNIEXPORT jint JNICALL Agent_OnAttach(JavaVM *vm, char *options,
@@ -281,7 +289,6 @@ extern "C" JNIEXPORT jint JNICALL Agent_OnAttach(JavaVM *vm, char *options,
     }
     localJvmtiEnv = jvmti_env;
     SetAllCapabilities(jvmti_env);
-//    jvmti_env->AddToSystemClassLoaderSearch(options);
 
     jvmtiEventCallbacks callbacks;
     memset(&callbacks, 0, sizeof(callbacks));
