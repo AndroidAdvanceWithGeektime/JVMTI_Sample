@@ -12,7 +12,7 @@
 运行界面
 ======
 
-[](Screenshot.png)
+![](Screenshot.png)
 
 产生的日志可以在 Logcat 中查看
 
